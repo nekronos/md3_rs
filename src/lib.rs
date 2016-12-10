@@ -2,109 +2,119 @@
 extern crate byteorder;
 
 use byteorder::{ReadBytesExt, LittleEndian};
-use std::io::{Cursor};
+use std::io::{Cursor,Read,Error,ErrorKind,Result};
+use std::path::Path;
+use std::fs::File;
 
 const MD3_MAGIC: i32 = 0x33504449;
 const MAX_QPATH: usize = 64;
 
-#[derive(Debug)]
-struct Vec3 {
-    x: f32,
-    y: f32,
-    z: f32,
+#[derive(Debug,Copy,Clone)]
+pub struct Vec3 {
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
 }
 
 #[derive(Debug)]
 pub struct Md3 {
-    header: Md3Header,
-    frames: Vec<Frame>,
-    tags: Vec<Tag>,
-    surfaces: Vec<Surface>,
+    pub header: Md3Header,
+    pub frames: Vec<Frame>,
+    pub tags: Vec<Tag>,
+    pub surfaces: Vec<Surface>,
 }
 
 #[derive(Debug)]
-struct Md3Header {
-    ident: i32,
-    version: i32,
-    name: String,
-    flags: i32,
-    num_frames: i32,
-    num_tags: i32,
-    num_surfaces: i32,
-    num_skins: i32,
-    ofs_frames: i32,
-    ofs_tags: i32,
-    ofs_surfaces: i32,
-    ofs_eof: i32,
+pub struct Md3Header {
+    pub ident: i32,
+    pub version: i32,
+    pub name: String,
+    pub flags: i32,
+    pub num_frames: i32,
+    pub num_tags: i32,
+    pub num_surfaces: i32,
+    pub num_skins: i32,
+    pub ofs_frames: i32,
+    pub ofs_tags: i32,
+    pub ofs_surfaces: i32,
+    pub ofs_eof: i32,
 }
 
 #[derive(Debug)]
-struct Frame {
-    min_bounds: Vec3,
-    max_bounds: Vec3,
-    local_origin: Vec3,
-    radius: f32,
-    name: String,
+pub struct Frame {
+    pub min_bounds: Vec3,
+    pub max_bounds: Vec3,
+    pub local_origin: Vec3,
+    pub radius: f32,
+    pub name: String,
 }
 
 #[derive(Debug)]
-struct Tag {
-    name: String,
-    origin: Vec3,
-    axis: [Vec3; 3],
+pub struct Tag {
+    pub name: String,
+    pub origin: Vec3,
+    pub axis: [Vec3; 3],
 }
 
 #[derive(Debug)]
-struct SurfaceHeader {
-    ident: i32,
-    name: String,
-    flags: i32,
-    num_frames: i32,
-    num_shaders: i32,
-    num_verts: i32,
-    num_triangles: i32,
-    ofs_triangles: i32,
-    ofs_shaders: i32,
-    ofs_st: i32,
-    ofs_xyznormal: i32,
-    ofs_end: i32,
+pub struct SurfaceHeader {
+    pub ident: i32,
+    pub name: String,
+    pub flags: i32,
+    pub num_frames: i32,
+    pub num_shaders: i32,
+    pub num_verts: i32,
+    pub num_triangles: i32,
+    pub ofs_triangles: i32,
+    pub ofs_shaders: i32,
+    pub ofs_st: i32,
+    pub ofs_xyznormal: i32,
+    pub ofs_end: i32,
 }
 
 #[derive(Debug)]
-struct Shader {
-    name: String,
-    shader_index: i32,
+pub struct Shader {
+    pub name: String,
+    pub shader_index: i32,
 }
 
 #[derive(Debug)]
-struct Surface {
-    header: SurfaceHeader,
-    shaders: Vec<Shader>,
-    triangles: Vec<Triangle>,
-    tex_coords: Vec<TexCoord>,
-    verticies: Vec<Vec<Vertex>>,
+pub struct Surface {
+    pub header: SurfaceHeader,
+    pub shaders: Vec<Shader>,
+    pub triangles: Vec<Triangle>,
+    pub tex_coords: Vec<TexCoord>,
+    pub vertices: Vec<Vec<Vertex>>,
 }
 
 #[derive(Debug)]
-struct Triangle {
-    indexes: [i32; 3],
+pub struct Triangle {
+    pub indexes: [i32; 3],
 }
 
 #[derive(Debug)]
-struct TexCoord {
-    st: [f32; 2],
+pub struct TexCoord {
+    pub st: [f32; 2],
 }
 
 #[derive(Debug)]
-struct Vertex {
-    x: i16,
-    y: i16,
-    z: i16,
-    normal: i16,
+pub struct Vertex {
+    pub x: i16,
+    pub y: i16,
+    pub z: i16,
+    pub normal: i16,
 }
 
 impl Md3 {
-    pub fn from_bytes(bytes: &[u8]) -> Result<Md3, String> {
+
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Md3> {
+        let mut bytes = Vec::new();
+        let mut file = File::open(path)?;
+        file.read_to_end(&mut bytes)?;
+        Md3::from_bytes(&bytes)
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> Result<Md3> {
         let mut buff = Cursor::new(bytes);
 
         if Md3::read_s32(&mut buff) == MD3_MAGIC {
@@ -132,7 +142,7 @@ impl Md3 {
 
             Ok(md3)
         } else {
-            Err(String::from("MD3 magic not matching"))
+            Err(Error::new(ErrorKind::InvalidData, "MD3 magic not matching"))
         }
     }
 
@@ -226,7 +236,7 @@ impl Md3 {
             Md3::read_many(buff, Md3::read_tex_coord, surface_header.num_verts as usize);
 
         buff.set_position(surface_start + surface_header.ofs_xyznormal as u64);
-        let verticies = Md3::read_many(buff,
+        let vertices = Md3::read_many(buff,
                                        |x| {
                                            Md3::read_many(x,
                                                           Md3::read_vertex,
@@ -239,7 +249,7 @@ impl Md3 {
             shaders: shaders,
             triangles: triangles,
             tex_coords: tex_coords,
-            verticies: verticies,
+            vertices: vertices,
         }
     }
 
