@@ -1,0 +1,7 @@
+[package]
+name = "md3"
+version = "0.1.0"
+authors = ["nekronos <lende.vegard@gmail.com>"]
+
+[dependencies]
+byteorder = "0.5.3"
