@@ -295,7 +295,7 @@ impl Md3 {
     }
 }
 
-#[cfg(test)]
+/*#[cfg(test)]
 mod tests {
 
     use super::*;
@@ -324,3 +324,4 @@ mod tests {
         let md3 = Md3::from_bytes(bytes).unwrap();
     }
 }
+*/
